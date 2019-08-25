@@ -2,6 +2,8 @@ package benchmark
 
 import (
 	"context"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"testing"
@@ -53,12 +55,27 @@ func BenchmarkRSocketServer(b *testing.B) {
 	}
 }
 
-func BenchmarkHTTPServer(b *testing.B) {
+func BenchmarkHTTPServerDontReuse(b *testing.B) {
 	cli := &http.Client{}
 	for i := 0; i < b.N; i++ {
-		_, err := cli.Get("http://127.0.0.1:7000/")
+		resp, err := cli.Get("http://127.0.0.1:7000/")
 		if err != nil {
 			b.Logf("err: %s", err)
+		} else {
+			resp.Body.Close()
+		}
+	}
+}
+
+func BenchmarkHTTPServerReuse(b *testing.B) {
+	cli := &http.Client{}
+	for i := 0; i < b.N; i++ {
+		resp, err := cli.Get("http://127.0.0.1:7000/")
+		if err != nil {
+			b.Logf("err: %s", err)
+		} else {
+			io.Copy(ioutil.Discard, resp.Body)
+			resp.Body.Close()
 		}
 	}
 }
